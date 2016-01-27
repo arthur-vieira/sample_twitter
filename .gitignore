@@ -15,3 +15,7 @@
 /log/*
 !/log/.keep
 /tmp
+
+# Ignore Spring files.
+/spring/*.pid
+# The Spring server is still a little quirky as of this writing, and sometimes Spring processes will accumulate and slow performance of your tests. If your tests seem to be getting unusually sluggish, it’s thus a good idea to inspect the system processes and kill them if necessary
