@@ -21,6 +21,6 @@ class UsersSignupTest < ActionDispatch::IntegrationTest
 					    password_confirmation: "password" }
 		end
 		assert_template 'users/show'
-		assert_select "div.alert"
+		assert_not flash.empty?
 	end
 end
