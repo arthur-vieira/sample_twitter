@@ -9,4 +9,11 @@ class User < ActiveRecord::Base
 	# - the ability to save a "password_digest" attribute to the database. This method hashes the password with bcrypt gem;
 	# - a pair of virtual (exist on the model object but aren't columns in the DB) attributes ("password" and "password_confirmation"), including presence validations upon object creation and a validation requiring that they match;
 	# - it adds to this model an "authenticate" method (user.authenticate('passwordInserted')) that returns the user when the password is correct (and false otherwise).
+
+	# Returns the hash digest of the given string
+	def User.digest(string)
+		cost = ActiveModel::SecurePassword.min_cost ? BCrypt::Engine::MIN_COST :
+			BCrypt::Engine.cost
+		BCrypt::Password.create(string, cost: cost)
+	end
 end
