@@ -1,5 +1,5 @@
 class User < ActiveRecord::Base
-	attr_accessor :remember_token, :activation_token
+	attr_accessor :remember_token, :activation_token, :reset_token
         before_create :create_activation_digest # User.new will make 2 new attributes for the object: activation_token and activation_digest(this one associated with a column in the DB, therefore will be written automatically when the user is saved)
 	before_save { email.downcase! } # some DB adapters use case-sensitive indices, therefore we use this "callback" (a method that gets invoked at a particular point in the lifecycle of an Active Record object). before_save is automatically called before the object is saved (both creation and updates)
 	validates :name, presence: true, length: { maximum: 50 }
@@ -44,13 +44,31 @@ class User < ActiveRecord::Base
 
         # Activates an account
         def activate
-          update_attribute(:activated,    true)
-          update_attribute(:activated_at, Time.zone.now)
+          #update_attribute(:activated,    true)
+          #update_attribute(:activated_at, Time.zone.now)
+          update_columns(activated: true, activated_at: Time.zone.now) # hits the DB once, instead of the above 2 separate transactions
         end
 
         # Sends activation email
         def send_activation_email
           UserMailer.account_activation(self).deliver_now
+        end
+
+        # Sets the password reset attributes
+        def create_reset_digest
+          self.reset_token = User.new_token
+          update_attribute(:reset_digest,  User.digest(reset_token))
+          update_attribute(:reset_sent_at, Time.zone.now)
+        end
+
+        # Sends password reset email
+        def send_password_reset_email
+          UserMailer.password_reset(self).deliver_now
+        end
+
+        # Returns true if a password reset is expired
+        def password_reset_expired?
+          reset_sent_at < 2.hours.ago
         end
 
         private
