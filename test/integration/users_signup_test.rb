@@ -1,27 +1,48 @@
 require 'test_helper'
 
 class UsersSignupTest < ActionDispatch::IntegrationTest
-	test "invalid signup information" do
-		get signup_path
-		assert_no_difference 'User.count' do
-			post users_path, user: { name:  "",
-					    email: "user@invalid",
-					    password:              "foo",
-					    password_confirmation: "bar" }
-		end
-		assert_template 'users/new'
-		assert_select "div#error_explanation"
-	end
 
-	test "valid signup information" do
-		get signup_path
-		assert_difference 'User.count', 1 do
-			post_via_redirect users_path, user: { name:  "Example User",
-					    email: "user@example.com",
-					    password:              "password",
-					    password_confirmation: "password" }
-		end
-		assert_template 'users/show'
-		assert is_logged_in?
-	end
+  def setup
+    ActionMailer::Base.deliveries.clear # because the deliveries Array is global, we have to reset it everytime to prevent our test from breaking if any other tests deliver emails
+  end
+
+  test "invalid signup information" do
+    get signup_path
+    assert_no_difference 'User.count' do
+      post users_path, user: { name:  "",
+                               email: "user@invalid",
+                               password:              "foo",
+                               password_confirmation: "bar" }
+    end
+    assert_template 'users/new'
+    assert_select "div#error_explanation"
+  end
+  test "valid signup information with account activation" do
+    get signup_path
+    assert_difference 'User.count', 1 do
+      post users_path, user: { name:  "Example User",
+                                            email: "user@example.com",
+                                            password:              "password",
+                                            password_confirmation: "password" }
+    end
+    assert_equal 1, ActionMailer::Base.deliveries.size # verifies that exactly 1 message was delivered
+    user = assigns(:user) # the method "assigns" lets us access instance variables in the corresponding action (in this case: the @user at the create action within UsersController
+    assert_not user.activated?
+    # Try to log in before activation.
+    log_in_as(user)
+    assert_not is_logged_in?
+    # Invalid activation token
+    get edit_account_activation_path("invalid token")
+    assert_not is_logged_in?
+    # Valid token, wrong email
+    get edit_account_activation_path(user.activation_token, email: 'wrong')
+    assert_not is_logged_in?
+    # Valid activation token
+    get edit_account_activation_path(user.activation_token, email: user.email)
+    assert user.reload.activated?
+    follow_redirect!
+    assert_template 'users/show'
+    assert is_logged_in?
+    assert_select "div.alert"
+  end
 end
