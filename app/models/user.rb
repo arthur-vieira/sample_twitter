@@ -1,5 +1,13 @@
 class User < ActiveRecord::Base
-  has_many :microposts, dependent: :destroy
+  has_many :microposts, dependent: :destroy # destroying a user should also destroy their microposts
+  has_many :active_relationships,   class_name:   "Relationship",
+                                    foreign_key:  "follower_id",
+                                    dependent:    :destroy
+  has_many :following, through: :active_relationships, source: :followed
+  has_many :passive_relationships,  class_name:   "Relationship",
+                                    foreign_key:  "followed_id",
+                                    dependent:    :destroy
+  has_many :followers, through: :passive_relationships, source: :follower
   attr_accessor :remember_token, :activation_token, :reset_token
   before_create :create_activation_digest # User.new will make 2 new attributes for the object: activation_token and activation_digest(this one associated with a column in the DB, therefore will be written automatically when the user is saved)
   before_save { email.downcase! } # some DB adapters use case-sensitive indices, therefore we use this "callback" (a method that gets invoked at a particular point in the lifecycle of an Active Record object). before_save is automatically called before the object is saved (both creation and updates)
@@ -73,8 +81,31 @@ class User < ActiveRecord::Base
   end
 
   # Defines a proto-feed
+  #def feed
+  #  Micropost.where("user_id = ?", id)
+  #end
+
+  # Follows a user
+  def follow(other_user)
+    active_relationships.create(followed_id: other_user.id)
+  end
+
+  # Unfollows a user
+  def unfollow(other_user)
+    active_relationships.find_by(followed_id: other_user.id).destroy
+  end
+
+  # Returns true if the current user is following other user
+  def following?(other_user)
+    following.include?(other_user)
+  end
+
+  # Returns a user's status feed
   def feed
-    Micropost.where("user_id = ?", id)
+    following_ids = "SELECT followed_id FROM relationships
+                        WHERE  follower_id = :user_id"
+    Micropost.where("user_id IN (#{following_ids})
+                        OR user_id = :user_id", user_id: id)
   end
 
   private
