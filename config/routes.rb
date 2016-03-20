@@ -7,10 +7,16 @@ Rails.application.routes.draw do
   get       'login'   => 'sessions#new'
   post      'login'   => 'sessions#create'
   delete    'logout'  => 'sessions#destroy'
-  resources :users
+  resources :users do
+    member do
+      # the MEMBER method arranges for the routes to respond to URLs containing the user id (e.g. users/1/followers). The other possibility, COLLECTION, works without the id (e.g. users/followers)
+      get :following, :followers
+    end
+  end
   resources :account_activations, only: [:edit]
   resources :password_resets,     only: [:new, :create, :edit, :update]
   resources :microposts,          only: [:create, :destroy]
+  resources :relationships,       only: [:create, :destroy]
 
   # The priority is based upon order of creation: first created -> highest priority.
   # See how all your routes lay out with "rake routes".
